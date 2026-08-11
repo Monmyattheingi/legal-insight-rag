@@ -1,0 +1,51 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Node / frontend build output
+node_modules/
+.next/
+dist/
+build/
+
+# Runtime and temporary files
+*.log
+*.tmp
+*.temp
+frontend/admin/uploads/
+
+# Local databases and database dumps
+*.sql.gz
+*.dump
+*.backup
+backups/
+
+# Large generated embedding exports
+*_embedded.csv
+*embedded*.csv
+
+# Generated chunk exports (source workflows and code remain tracked)
+workflows/legal_chunks*.json
+workflows/legal_chnks*.json
+workflows/legal-rag-execution-*.csv
+
+# Local AI models
+*.gguf
+models/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

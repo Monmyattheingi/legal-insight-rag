@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="my">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="ဖြစ်စဉ်အကြောင်းအရာကို အတည်ပြုထားသော မြန်မာဥပဒေများနှင့် ချိတ်ဆက်သုံးသပ်ပေးသည့် Legal Insight စနစ်"
+    />
+    <title>Legal Insight · Crime Report Analyzer</title>
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" id="sidebar">
+        <a class="brand" href="/" aria-label="Legal Insight ပင်မစာမျက်နှာ">
+          <span class="brand-mark" aria-hidden="true">ℒ</span>
+          <span class="brand-copy">
+            <strong>Legal Insight</strong>
+            <small>Crime Report Analyzer</small>
+          </span>
+        </a>
+
+        <nav class="side-nav" aria-label="ပင်မလမ်းညွှန်">
+          <button class="active" type="button" data-nav-action="home"><span aria-hidden="true">⌂</span> မူလစာမျက်နှာ</button>
+          <button type="button" data-nav-action="new"><span aria-hidden="true">＋</span> သုံးသပ်ချက်အသစ်</button>
+          <button type="button" data-nav-view="history"><span aria-hidden="true">◷</span> မှတ်တမ်း <b class="nav-count" id="historyCount">၀</b></button>
+          <button type="button" data-nav-view="saved"><span aria-hidden="true">☆</span> သိမ်းထားသောအဖြေများ <b class="nav-count" id="savedCount">၀</b></button>
+          <button type="button" data-nav-view="guide"><span aria-hidden="true">?</span> စနစ်အသုံးပြုနည်း</button>
+          <button type="button" data-nav-view="about"><span aria-hidden="true">ⓘ</span> စနစ်အကြောင်း</button>
+          <button type="button" data-nav-view="settings"><span aria-hidden="true">⚙</span> ဆက်တင်များ</button>
+        </nav>
+      </aside>
+
+      <div class="workspace">
+        <main class="main-content" id="home">
+          <section class="hero" aria-labelledby="heroTitle">
+            <div class="hero-copy-block">
+              <div class="eyebrow">LEGAL RESEARCH</div>
+              <h1 id="heroTitle"><span>သင့်ဖြစ်စဉ်နှင့် သက်ဆိုင်သော</span><span>ဥပဒေအချက်အလက်ကို ရှာဖွေပါ</span></h1>
+              <p>
+                ဖြစ်ပွားခဲ့သည့်အကြောင်းအရာကို မြန်မာလိုရေးပါ။ အတည်ပြုထားသော ဥပဒေစာတမ်းများအတွင်းမှ
+                သက်ဆိုင်ရာပုဒ်မ၊ ဖြစ်နိုင်သောပြစ်ဒဏ်နှင့် လုပ်ဆောင်ရန်အချက်များကို အထောက်အထားဖြင့် ပြန်လည်ဖော်ပြပါမည်။
+              </p>
+            </div>
+            <div class="hero-art" aria-hidden="true">
+              <span class="art-halo"></span>
+              <img src="/assets/images/legal-hero.png" alt="" />
+            </div>
+          </section>
+
+          <form class="question-card" id="questionForm">
+            <div class="question-heading">
+              <span class="question-icon" aria-hidden="true">◫</span>
+              <label for="question">ဖြစ်စဉ်ကို ရေးပါ</label>
+            </div>
+            <textarea
+              id="question"
+              name="question"
+              rows="4"
+              maxlength="1000"
+              placeholder="ဥပမာ — မသမာသူလူတစ်စုက ကလေးသူငယ်အား လိင်ပိုင်းဆိုင်ရာ ခေါင်းပုံဖြတ်ခြင်း ပြုလုပ်ခဲ့သည်။"
+              required
+            ></textarea>
+            <div class="question-actions">
+              <span id="characterCount">၀ / ၁၀၀၀</span>
+              <button type="submit" id="askButton">
+                <span>ဥပဒေအရ သုံးသပ်ရန်</span>
+                <span aria-hidden="true">→</span>
+              </button>
+            </div>
+          </form>
+
+          <section class="quick-prompts" aria-label="နမူနာဖြစ်စဉ်များ">
+            <span>နမူနာဖြစ်စဉ်တစ်ခုဖြင့် စမ်းကြည့်ပါ</span>
+            <div class="prompt-list">
+              <button type="button" data-question="ဖခင်သည် လင်မယားကွာရှင်းသည့်အခါ ကလေးအား ငွေကြေးထောက်ပံ့မှု မရှိပါ။"><span>▤</span> ကလေးထောက်ပံ့မှု</button>
+              <button type="button" data-question="အသက် ၈ နှစ်အရွယ် ကလေးတစ်ဦးက အိမ်နီးချင်း၏ ပစ္စည်းကို ဖျက်ဆီးခဲ့သည်။"><span>⚖</span> ကလေး၏တာဝန်ရှိမှု</button>
+              <button type="button" data-question="မသမာသူလူတစ်စုက ကလေးသူငယ်အား လိင်ပိုင်းဆိုင်ရာ ခေါင်းပုံဖြတ်ခြင်း ပြုလုပ်ခဲ့သည်။"><span>♙</span> ကလေးကာကွယ်ရေး</button>
+              <button type="button" data-question="လင်မယားကွာရှင်းပြီးနောက် ကလေးအား မည်သူက အုပ်ထိန်းခွင့်ရှိသနည်း။"><span>♢</span> အုပ်ထိန်းခွင့်</button>
+            </div>
+          </section>
+
+          <section class="feature-grid" id="about" aria-label="စနစ်၏အဓိကလုပ်ဆောင်ချက်များ">
+            <article>
+              <span class="feature-icon" aria-hidden="true">ϟ</span>
+              <div><strong>မြန်မာလိုမေးနိုင်သည်</strong><p>ဖြစ်စဉ်ကို သဘာဝကျသော မြန်မာစာဖြင့် ရေးသွင်းနိုင်ပါသည်။</p></div>
+            </article>
+            <article>
+              <span class="feature-icon" aria-hidden="true">✓</span>
+              <div><strong>အတည်ပြုဥပဒေကိုသုံးသည်</strong><p>Database ထဲရှိ မူရင်းဥပဒေပုဒ်မများကိုသာ အထောက်အထားပြုသည်။</p></div>
+            </article>
+            <article>
+              <span class="feature-icon" aria-hidden="true">▥</span>
+              <div><strong>သက်ဆိုင်ရာပုဒ်မကိုပြသည်</strong><p>Raw search result မဟုတ်ဘဲ ဖြစ်စဉ်နှင့်ချိတ်ဆက်သုံးသပ်ပေးသည်။</p></div>
+            </article>
+            <article>
+              <span class="feature-icon" aria-hidden="true">◷</span>
+              <div><strong>အချိန်တိုအတွင်းရလဒ်</strong><p>ဖြစ်စဉ်အကျဉ်း၊ ဥပဒေ၊ ပြစ်ဒဏ်နှင့် အကြံပြုချက်ကို တစ်နေရာတည်းတွင်ဖော်ပြသည်။</p></div>
+            </article>
+          </section>
+
+          <section class="result-region" id="resultRegion" hidden aria-live="polite">
+            <div class="result-heading">
+              <div>
+                <h2>ဥပဒေအထောက်အထားအရ</h2>
+              </div>
+              <div class="result-tools">
+                <span class="response-time" id="responseTime"></span>
+                <button class="save-result-button" id="saveResultButton" type="button" hidden>☆ သိမ်းမည်</button>
+              </div>
+            </div>
+
+            <section class="analysis-panel" id="analysisPanel" hidden>
+              <div class="analysis-summary">
+                <span class="confidence-badge" id="confidenceBadge"></span>
+                <div>
+                  <span class="analysis-label">ဖြစ်စဉ်အမျိုးအစား</span>
+                  <h3 id="classificationName"></h3>
+                  <p id="classificationReason"></p>
+                </div>
+              </div>
+              <div class="analysis-grid">
+                <article class="analysis-block">
+                  <span class="analysis-label">တွေ့ရှိသောအချက်များ</span>
+                  <dl id="factList"></dl>
+                </article>
+                <article class="analysis-block law-block">
+                  <span class="analysis-label">ဥပဒေအရသုံးသပ်ချက်</span>
+                  <p id="lawSummary"></p>
+                  <p class="penalty-text" id="penaltyText" hidden></p>
+                </article>
+                <article class="analysis-block analysis-actions">
+                  <span class="analysis-label">အကြံပြုဆောင်ရွက်ချက်</span>
+                  <ol id="recommendedActions"></ol>
+                </article>
+                <article class="analysis-block related-laws">
+                  <div class="related-laws-heading">
+                    <span class="analysis-label">ဆက်စပ်ဥပဒေပုဒ်မများ</span>
+                    <small>ဖြစ်စဉ်နှင့် တိုက်ရိုက်သက်ဆိုင်သော ပုဒ်မများသာ</small>
+                  </div>
+                  <div class="related-law-list" id="relatedLawList"></div>
+                </article>
+              </div>
+            </section>
+
+            <article class="answer-card" id="answerCard">
+              <div class="answer-icon" aria-hidden="true">§</div>
+              <div>
+                <span class="analysis-label">အဖြေအကျဉ်း</span>
+                <p id="answerText"></p>
+              </div>
+            </article>
+
+            <div class="sources-layout">
+              <details class="source-disclosure">
+                <summary>မူရင်းဥပဒေပုဒ်မများ ကြည့်ရန်</summary>
+                <div class="source-list" id="sourceList"></div>
+              </details>
+              <aside class="notice-card">
+                <strong>သတိပြုရန်</strong>
+                <p id="disclaimerText"></p>
+              </aside>
+            </div>
+          </section>
+
+          <section class="empty-state" id="emptyState" aria-hidden="true"></section>
+        </main>
+
+        <footer>
+          <p>© 2026 Legal Insight · Myanmar Legal RAG Prototype</p>
+          <p>ဥပဒေအချက်အလက် အထောက်အကူပြုစနစ်</p>
+        </footer>
+      </div>
+    </div>
+
+    <dialog class="utility-dialog" id="utilityDialog" aria-labelledby="utilityTitle">
+      <div class="utility-dialog-shell">
+        <header class="utility-dialog-header">
+          <div>
+            <span class="section-kicker" id="utilityKicker">LEGAL INSIGHT</span>
+            <h2 id="utilityTitle"></h2>
+          </div>
+          <button class="dialog-close" id="dialogClose" type="button" aria-label="ပိတ်ရန်">×</button>
+        </header>
+        <div class="utility-dialog-body" id="utilityBody"></div>
+      </div>
+    </dialog>
+
+    <template id="guideTemplate">
+      <section class="guide-layout">
+        <article><span>၁</span><div><strong>ဖြစ်စဉ်ကို တိတိကျကျရေးပါ</strong><p>အသက်၊ ပါဝင်သူ၊ လုပ်ရပ်နှင့် ဖြစ်ပွားခဲ့သည့်အခြေအနေကို မြန်မာလို ရေးထည့်ပါ။</p></div></article>
+        <article><span>၂</span><div><strong>ဥပဒေအရ သုံးသပ်ရန် နှိပ်ပါ</strong><p>စနစ်က database ရှိ ဥပဒေအပိုင်းများကို ရှာဖွေပြီး သက်ဆိုင်ရာပုဒ်မနှင့် ပြစ်ဒဏ်ကို ချိတ်ဆက်ပေးပါမည်။</p></div></article>
+        <article><span>၃</span><div><strong>အဖြေနှင့် မူရင်းပုဒ်မကို စစ်ပါ</strong><p>အဖြေအကျဉ်း၊ သုံးသပ်ချက်၊ ပြစ်ဒဏ်နှင့် ဆက်စပ်ပုဒ်မများကို ဖတ်ပြီး မူရင်းဥပဒေစာသားကို ဖွင့်ကြည့်ပါ။</p></div></article>
+        <article><span>၄</span><div><strong>လိုအပ်လျှင် သိမ်းထားပါ</strong><p>☆ သိမ်းမည်ကို နှိပ်၍ အရေးကြီးသောအဖြေကို Saved ထဲတွင် ပြန်ဖွင့်နိုင်ပါသည်။</p></div></article>
+      </section>
+      <aside class="example-box"><strong>မေးခွန်းကောင်း နမူနာ</strong><p>“လူကြီးတစ်ဦးက ကလေးသူငယ်အား အဓမ္မအလုပ်ခိုင်းစေခဲ့သည်။ မည်သည့်ပုဒ်မနှင့် ပြစ်ဒဏ်သက်ဆိုင်သနည်း။”</p></aside>
+      <p class="utility-note">လက်ရှိ database ထဲတွင် ထည့်သွင်းထားသော ဥပဒေများကိုသာ အခြေခံပါသည်။ တရားဝင်ဥပဒေအကြံဉာဏ်အဖြစ် မယူဆသင့်ပါ။</p>
+    </template>
+
+    <template id="aboutTemplate">
+      <section class="about-system">
+        <div class="about-lead"><span>ℒ</span><div><strong>Legal Insight</strong><p>Crime Report Analyzer · Myanmar Legal RAG Prototype</p></div></div>
+        <p>ဖြစ်စဉ်ဖော်ပြချက်ကို database အတွင်းရှိ အတည်ပြုဥပဒေစာတမ်းများနှင့် တိုက်ဆိုင်စစ်ဆေးပြီး သက်ဆိုင်ရာပုဒ်မ၊ ဖြစ်နိုင်သောပြစ်ဒဏ်နှင့် လုပ်ဆောင်ရန်အချက်များကို မြန်မာလိုပြန်ပေးသည့် သုတေသနစနစ်ဖြစ်သည်။</p>
+        <div class="system-flow"><span>DOCX</span><i>→</i><span>စာသားခွဲခြမ်း</span><i>→</i><span>Embedding</span><i>→</i><span>Semantic Search</span><i>→</i><span>ဥပဒေအဖြေ</span></div>
+        <dl class="about-details"><div><dt>Version</dt><dd>Prototype 2026</dd></div><div><dt>အဖြေဘာသာစကား</dt><dd>မြန်မာ</dd></div><div><dt>ဒေတာအရင်းအမြစ်</dt><dd>ထည့်သွင်းအတည်ပြုထားသော ဥပဒေစာတမ်းများ</dd></div></dl>
+      </section>
+    </template>
+
+    <script src="/assets/app.js" defer></script>
+  </body>
+</html>

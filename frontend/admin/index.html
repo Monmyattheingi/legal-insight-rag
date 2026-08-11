@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="my">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Legal Insight Admin</title>
+  <link rel="stylesheet" href="/admin.css">
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <a class="brand" href="/">
+        <span class="brand-mark">L</span>
+        <span><strong>Legal Insight</strong><small>Knowledge Base Admin</small></span>
+      </a>
+      <nav>
+        <button class="active" data-view="dashboard">⌂ <span>Dashboard</span></button>
+        <button data-view="documents">▤ <span>ဥပဒေစာတမ်းများ</span></button>
+        <button data-view="upload">＋ <span>ဥပဒေအသစ်ထည့်ရန်</span></button>
+        <button data-view="processing">◷ <span>လုပ်ဆောင်မှုအခြေအနေ</span></button>
+        <button data-view="queries">⌕ <span>မေးခွန်းလုပ်ဆောင်မှု</span></button>
+        <button data-view="review">✓ <span>အရည်အသွေးစစ်ဆေးရန်</span></button>
+      </nav>
+    </aside>
+
+    <main>
+      <header>
+        <div><span class="eyebrow">KNOWLEDGE BASE</span><h1>စီမံခန့်ခွဲမှု Dashboard</h1></div>
+        <div class="system-status"><i></i><span id="systemStatus">စနစ်စစ်ဆေးနေသည်…</span></div>
+      </header>
+
+      <section id="dashboardView" class="view active">
+        <div class="welcome">
+          <div><span class="eyebrow">LEGAL INSIGHT ADMIN</span><h2>ဥပဒေဒေတာ အခြေအနေကို တစ်နေရာတည်းမှ စစ်ဆေးပါ</h2><p>စာတမ်း၊ အပိုင်းနှင့် embedding များ အပြည့်အစုံဝင်ရောက်ထားခြင်းရှိမရှိ ကြည့်ရှုနိုင်ပါသည်။</p></div>
+          <div class="seal">§</div>
+        </div>
+        <div class="stats">
+          <article><span>ဥပဒေစာတမ်း</span><strong id="documentCount">—</strong><small>Database အတွင်းရှိ စာတမ်း</small></article>
+          <article><span>ဥပဒေအပိုင်း</span><strong id="chunkCount">—</strong><small>ရှာဖွေရန် ပြင်ဆင်ထားသော chunks</small></article>
+          <article><span>Embedding ပြီးစီး</span><strong id="embeddingCount">—</strong><small id="embeddingRate">စစ်ဆေးနေသည်</small></article>
+          <article><span>သတိပေးချက်</span><strong id="warningCount">—</strong><small>စစ်ဆေးရန်လိုသော စာတမ်း</small></article>
+        </div>
+
+        <section class="panel">
+          <div class="panel-head"><div><span class="eyebrow">RECENT DOCUMENTS</span><h2>ဥပဒေစာတမ်းများ</h2></div><div class="search"><span>⌕</span><input id="lawSearch" type="search" placeholder="ဥပဒေအမည် ရှာရန်"></div></div>
+          <div class="table-wrap">
+            <table><thead><tr><th>ဥပဒေအမည်</th><th>စာတမ်းပုံစံ</th><th>Chunks</th><th>Embeddings</th><th>အခြေအနေ</th></tr></thead><tbody id="documentRows"><tr><td colspan="5" class="empty">ဒေတာရယူနေသည်…</td></tr></tbody></table>
+          </div>
+        </section>
+      </section>
+
+      <section id="uploadView" class="view">
+        <div class="page-title"><span class="eyebrow">DOCUMENT INGESTION</span><h2>ဥပဒေအသစ်ထည့်ရန်</h2><p>စာတမ်းကို staging area သို့တင်ပြီး ingestion အတွက် ပြင်ဆင်ပါ။</p></div>
+        <div class="form-layout">
+          <form id="uploadForm" class="panel upload-form">
+            <div class="field"><label for="lawName">ဥပဒေအမည် <b>*</b></label><input id="lawName" name="law_name" required placeholder="ဥပမာ — သစ်တောဥပဒေ"></div>
+            <div class="field-grid"><div class="field"><label for="lawNumber">ဥပဒေအမှတ်</label><input id="lawNumber" name="law_number"></div><div class="field"><label for="category">အမျိုးအစား</label><input id="category" name="category"></div></div>
+            <div class="field"><label for="sourceUrl">မူရင်း Source URL</label><input id="sourceUrl" name="source_url" type="url" placeholder="http://www.mlis.gov.mm/..."></div>
+            <label class="drop-zone" for="lawFile"><span class="drop-icon">⇧</span><strong>DOCX ဖိုင်ရွေးပါ</strong><small id="fileName">ဖိုင်အရွယ်အစား 25 MB အထိ</small><input id="lawFile" name="file" type="file" accept=".docx" required></label>
+            <div class="form-actions"><span id="uploadMessage"></span><button class="primary" type="submit" id="uploadButton">Upload တင်ရန် →</button></div>
+          </form>
+          <aside class="info-card"><span>လုပ်ဆောင်ပုံ</span><ol><li>ဥပဒေအမည်နှင့် source ကိုဖြည့်ပါ</li><li>DOCX ကို Admin မှတင်ပါ</li><li>n8n ဖြင့် extract နှင့် chunk အလိုအလျောက်လုပ်ပါ</li><li>Processing မှ chunks JSON download လုပ်ပြီး Colab ဖြင့် embedding ပြုလုပ်ပါ</li><li>CSV ကို import ပြီး Indexed ဖြစ်မှုစစ်ပါ</li></ol><p>မူလ user UI နှင့် မူလ n8n workflow ကို မပြောင်းထားပါ။</p></aside>
+        </div>
+        <section class="panel csv-import-panel">
+          <div class="panel-head"><div><span class="eyebrow">COLAB EMBEDDING RESULT</span><h2>Embedded CSV ပြန်ထည့်ရန်</h2></div></div>
+          <form id="csvImportForm" class="csv-import-form">
+            <label class="drop-zone compact" for="embeddingCsv"><span class="drop-icon">⇧</span><strong>Colab မှ download လုပ်ထားသော CSV ရွေးပါ</strong><small id="csvFileName">*_embedded.csv · 100 MB အထိ</small><input id="embeddingCsv" name="file" type="file" accept=".csv,text/csv" required></label>
+            <div class="form-actions"><span id="csvImportMessage"></span><button class="primary" type="submit" id="csvImportButton">CSV Import လုပ်ရန် →</button></div>
+          </form>
+        </section>
+      </section>
+
+      <section id="processingView" class="view">
+        <div class="page-title"><span class="eyebrow">PIPELINE MONITOR</span><h2>လုပ်ဆောင်မှုအခြေအနေ</h2><p>ဥပဒေတစ်ခုချင်း၏ extraction၊ chunking၊ embedding နှင့် indexing အခြေအနေ။</p></div>
+        <section class="panel"><div class="panel-head"><div><span class="eyebrow">INGESTION PIPELINE</span><h2>စာတမ်းများ၏ အဆင့်</h2></div><button class="secondary" id="refreshProcessing">↻ ပြန်စစ်ရန်</button></div><div id="processingList" class="process-list"><div class="empty">ဒေတာရယူနေသည်…</div></div></section>
+      </section>
+
+      <section id="queriesView" class="view">
+        <div class="page-title"><span class="eyebrow">QUESTION TRACE</span><h2>မေးခွန်းလုပ်ဆောင်မှု</h2><p>User မေးခွန်းမှ အဖြေတည်ဆောက်သည်အထိ အဆင့်တိုင်းကို အချိန်နှင့်အတူ စစ်ဆေးနိုင်ပါသည်။</p></div>
+        <section class="panel trace-list-panel">
+          <div class="panel-head"><div><span class="eyebrow">RECENT QUESTIONS</span><h2>နောက်ဆုံးမေးခွန်းများ</h2></div><button class="secondary" id="refreshQueries">↻ ပြန်စစ်ရန်</button></div>
+          <div id="queryRunList" class="query-run-list"><div class="empty">ဒေတာရယူနေသည်…</div></div>
+        </section>
+        <section class="panel trace-detail-panel">
+          <div class="panel-head"><div><span class="eyebrow">ANSWER INSPECTION</span><h2>မေးခွန်းနှင့် ရလဒ်စစ်ဆေးမှု</h2></div></div>
+          <div id="queryRunDetail" class="query-run-detail"><div class="empty">ကြည့်လိုသော မေးခွန်းတစ်ခုကို ရွေးပါ။</div></div>
+        </section>
+      </section>
+
+      <section id="reviewView" class="view">
+        <div class="page-title"><span class="eyebrow">DATA QUALITY</span><h2>အရည်အသွေးစစ်ဆေးရန်</h2><p>ရှာဖွေမှုတိကျမှုကို ထိခိုက်နိုင်သော document နှင့် chunk ပြဿနာများ။</p></div>
+        <div class="quality-summary"><article><strong id="healthyDocs">—</strong><span>ကောင်းမွန်သောစာတမ်း</span></article><article><strong id="reviewDocs">—</strong><span>စစ်ဆေးရန်လိုသောစာတမ်း</span></article><article><strong id="qualityIssues">—</strong><span>တွေ့ရှိသောအချက်</span></article></div>
+        <section class="panel"><div class="panel-head"><div><span class="eyebrow">AUTOMATIC CHECKS</span><h2>စစ်ဆေးမှုရလဒ်</h2></div><button class="secondary" id="refreshQuality">↻ ပြန်စစ်ရန်</button></div><div id="qualityList" class="quality-list"><div class="empty">စစ်ဆေးနေသည်…</div></div></section>
+      </section>
+    </main>
+  </div>
+  <script src="/admin.js"></script>
+</body>
+</html>

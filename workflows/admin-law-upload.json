@@ -1,0 +1,207 @@
+[
+  {
+    "id": "LegalAdminUpload01",
+    "name": "Legal Insight Admin - DOCX to Chunks",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "admin-law-upload",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          -620,
+          0
+        ],
+        "id": "9fabaf1a-1753-43f7-b164-8ec75427a48e",
+        "name": "Admin Upload Webhook",
+        "webhookId": "e9d38361-ae3a-4c8a-96e2-4cfe50c2d055"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://ocr:8000/extract-docx",
+          "sendBody": true,
+          "contentType": "multipart-form-data",
+          "bodyParameters": {
+            "parameters": [
+              {
+                "parameterType": "formBinaryData",
+                "name": "file",
+                "inputDataFieldName": "document"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 900000
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          -400,
+          0
+        ],
+        "id": "714c298b-9adf-45f3-a1b3-17cdf18e43c0",
+        "name": "Extract DOCX"
+      },
+      {
+        "parameters": {
+          "jsCode": "const extracted = $input.first().json;\nconst upload = $('Admin Upload Webhook').first();\nconst body = upload.json.body || {};\n\nreturn [{\n  json: {\n    ...extracted,\n    law_name: body.law_name,\n    law_number: body.law_number || null,\n    category: body.category || null,\n    language: body.language || 'my',\n    source_url: body.source_url || '',\n    source_file_name: extracted.filename || upload.binary?.document?.fileName || null,\n  },\n}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -180,
+          0
+        ],
+        "id": "60c658a1-b599-4ef5-aa57-b34833ebd3f9",
+        "name": "Merge Upload Metadata"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "INSERT INTO legal_documents (\n  law_name,\n  law_number,\n  language,\n  category,\n  source_url,\n  source_file_name,\n  document_hash,\n  legal_status\n)\nVALUES (\n  $1,\n  $2,\n  $3,\n  $4,\n  COALESCE(NULLIF($5, ''), 'manual-upload://' || $6),\n  $6,\n  encode(digest($7, 'sha256'), 'hex'),\n  'active'\n)\nON CONFLICT (source_url, document_hash)\nDO UPDATE SET source_file_name = EXCLUDED.source_file_name\nRETURNING id;",
+          "options": {
+            "queryReplacement": "={{ [   $json.law_name,   $json.law_number || null,   $json.language || 'my',   $json.category || null,   $json.source_url || '',   $json.source_file_name,   $json.text ] }}"
+          }
+        },
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.6,
+        "position": [
+          40,
+          0
+        ],
+        "id": "dc6172e9-f317-42a5-929b-9b3aa1df00af",
+        "name": "Create Document",
+        "credentials": {
+          "postgres": {
+            "id": "VC9DUjG0vh3XJ3qW",
+            "name": "Legal RAG PostgreSQL"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const document = $input.first().json;\nconst extracted = $('Merge Upload Metadata').first().json;\nreturn [{ json: { ...extracted, document_id: document.id } }];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          260,
+          0
+        ],
+        "id": "81c36506-e517-4d63-b6d9-ed0e2cce3584",
+        "name": "Prepare Chunker Input"
+      },
+      {
+        "parameters": {
+          "jsCode": "const output = [];\nconst sectionPattern = /^(?:ပုဒ်မ\\s*)?([၀-၉0-9]{1,4})(?:\\s*[။.]|\\s+|$)(.*)$/u;\nconst chapterPattern = /^(အခန်း\\s*\\([^\\n]+\\)|အခန်း\\s+[၀-၉0-9]+|chapter\\s+[^\\n]+)$/iu;\nconst subsectionPattern = /^\\s*[\\(（]([က-အ၀-၉0-9]+)[\\)）]\\s*(.*)$/u;\n\nfunction splitBySubsection(section) {\n  const parts = [];\n  let current = null;\n\n  for (let lineIndex = 0; lineIndex < section.lines.length; lineIndex++) {\n    const line = section.lines[lineIndex];\n    // A subsection can start immediately after the section number on its first line.\n    const candidate = lineIndex === 0 && section.section\n      ? (line.match(sectionPattern)?.[2] || '')\n      : line;\n    const match = candidate.match(subsectionPattern);\n\n    if (match) {\n      if (current) parts.push(current);\n      current = { subsection: match[1], lines: [line] };\n    } else if (current) {\n      current.lines.push(line);\n    } else {\n      current = { subsection: null, lines: [line] };\n    }\n  }\n\n  if (current) parts.push(current);\n  return parts;\n}\n\nfor (let itemIndex = 0; itemIndex < items.length; itemIndex++) {\n  const input = items[itemIndex].json;\n  const text = String(input.text || '')\n    .replace(/\\r\\n/g, '\\n')\n    .replace(/[\\t ]+/g, ' ')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n\n  if (!text) throw new Error('No extracted text was supplied');\n\n  const lines = text.split('\\n').map((value) => value.trim()).filter(Boolean);\n  const sections = [];\n  let currentSection = null;\n  let currentChapter = null;\n\n  for (const line of lines) {\n    if (chapterPattern.test(line)) {\n      currentChapter = line;\n      continue;\n    }\n\n    const sectionMatch = line.match(sectionPattern);\n    if (sectionMatch) {\n      if (currentSection) sections.push(currentSection);\n      currentSection = {\n        chapter: currentChapter,\n        section: sectionMatch[1],\n        lines: [line],\n      };\n    } else if (currentSection) {\n      currentSection.lines.push(line);\n    } else {\n      currentSection = { chapter: currentChapter, section: null, lines: [line] };\n    }\n  }\n\n  if (currentSection) sections.push(currentSection);\n\n  const maxLength = 5000;\n  const overlap = 500;\n  let chunkIndex = 0;\n\n  for (const section of sections) {\n    for (const part of splitBySubsection(section)) {\n      const body = part.lines.join('\\n');\n      for (let start = 0; start < body.length; start += maxLength - overlap) {\n        const content = body.slice(start, start + maxLength).trim();\n        if (!content) continue;\n\n        output.push({\n          json: {\n            document_id: input.document_id,\n            chunk_index: chunkIndex++,\n            chapter: section.chapter,\n            section: section.section,\n            subsection: part.subsection,\n            content,\n            metadata: {\n              law_name: input.law_name,\n              law_number: input.law_number || null,\n              language: input.language || 'my',\n              category: input.category || null,\n              source_url: input.source_url,\n              source_file_name: input.source_file_name || input.filename || null,\n            },\n          },\n          pairedItem: { item: itemIndex },\n        });\n\n        if (body.length <= maxLength) break;\n      }\n    }\n  }\n}\n\nreturn output;\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          480,
+          0
+        ],
+        "id": "c560e17a-6096-4696-8ff3-67d0044c94f9",
+        "name": "Create Legal Chunks"
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ { document_id: $('Create Document').first().json.id, chunks: $input.all().map(item => item.json) } }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.4,
+        "position": [
+          700,
+          0
+        ],
+        "id": "667b61d6-9371-480a-8a33-f102142537f7",
+        "name": "Return Chunks to Admin"
+      }
+    ],
+    "connections": {
+      "Admin Upload Webhook": {
+        "main": [
+          [
+            {
+              "node": "Extract DOCX",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extract DOCX": {
+        "main": [
+          [
+            {
+              "node": "Merge Upload Metadata",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Merge Upload Metadata": {
+        "main": [
+          [
+            {
+              "node": "Create Document",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Create Document": {
+        "main": [
+          [
+            {
+              "node": "Prepare Chunker Input",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare Chunker Input": {
+        "main": [
+          [
+            {
+              "node": "Create Legal Chunks",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Create Legal Chunks": {
+        "main": [
+          [
+            {
+              "node": "Return Chunks to Admin",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "active": false,
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "versionId": "5990293d-7874-48c5-b2ee-83638bdcaf59",
+    "meta": {
+      "templateCredsSetupCompleted": true
+    },
+    "tags": []
+  }
+]
