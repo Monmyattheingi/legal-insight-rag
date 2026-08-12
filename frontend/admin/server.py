@@ -131,6 +131,8 @@ class AdminHandler(SimpleHTTPRequestHandler):
             return self.send_processing()
         if path == "/api/admin/quality":
             return self.send_quality()
+        if path.startswith("/api/admin/quality/") and path.endswith("/chunks"):
+            return self.send_quality_chunks(path.split("/")[-2])
         if path == "/api/admin/query-runs":
             return self.send_query_runs()
         if path.startswith("/api/admin/query-runs/"):
@@ -205,6 +207,31 @@ class AdminHandler(SimpleHTTPRequestHandler):
             self.send_json({"summary": {"healthy": len(documents) - review_count, "review": review_count, "issues": issue_count}, "documents": documents}, 200)
         except (subprocess.SubprocessError, json.JSONDecodeError, OSError) as exc:
             self.send_json({"error": "quality data unavailable", "detail": str(exc)}, 503)
+
+    def send_quality_chunks(self, document_id):
+        if not re.fullmatch(r"[0-9a-fA-F-]{36}", document_id):
+            return self.send_json({"error": "invalid document id"}, 400)
+        try:
+            where = f"""c.document_id = '{document_id}'::uuid AND
+              (length(trim(c.content)) < 40 OR c.section IS NULL OR c.embedding IS NULL)"""
+            total = int(database_query(f"SELECT count(*)::int FROM legal_chunks c WHERE {where};") or 0)
+            items = database_query(f"""
+            SELECT COALESCE(json_agg(row_to_json(result)), '[]'::json)
+            FROM (
+              SELECT c.id, c.chunk_index, c.chapter, c.section, c.subsection,
+                     c.content, c.metadata, (c.embedding IS NOT NULL) AS has_embedding,
+                     array_remove(ARRAY[
+                       CASE WHEN length(trim(c.content)) < 40 THEN 'စာသားအလွန်တိုနေသည်' END,
+                       CASE WHEN c.section IS NULL THEN 'Section metadata မရှိပါ' END,
+                       CASE WHEN c.embedding IS NULL THEN 'Embedding မရှိပါ' END
+                     ], NULL) AS reasons
+                FROM legal_chunks c WHERE {where}
+               ORDER BY c.chunk_index LIMIT 100
+            ) result;
+            """)
+            self.send_json({"total": total, "items": items}, 200)
+        except (subprocess.SubprocessError, json.JSONDecodeError, OSError) as exc:
+            self.send_json({"error": "chunk quality data unavailable", "detail": str(exc)}, 503)
 
     def send_query_runs(self):
         try:

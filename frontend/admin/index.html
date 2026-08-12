@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Legal Insight Admin</title>
-  <link rel="stylesheet" href="/admin.css">
+  <link rel="stylesheet" href="/admin.css?v=20260812-nav-font">
 </head>
 <body>
   <div class="shell">
@@ -19,6 +19,7 @@
         <button data-view="upload">＋ <span>ဥပဒေအသစ်ထည့်ရန်</span></button>
         <button data-view="processing">◷ <span>လုပ်ဆောင်မှုအခြေအနေ</span></button>
         <button data-view="queries">⌕ <span>မေးခွန်းလုပ်ဆောင်မှု</span></button>
+        <button data-view="history">▦ <span>မေးခွန်းမှတ်တမ်းများ</span></button>
         <button data-view="review">✓ <span>အရည်အသွေးစစ်ဆေးရန်</span></button>
       </nav>
     </aside>
@@ -78,12 +79,28 @@
       <section id="queriesView" class="view">
         <div class="page-title"><span class="eyebrow">QUESTION TRACE</span><h2>မေးခွန်းလုပ်ဆောင်မှု</h2><p>User မေးခွန်းမှ အဖြေတည်ဆောက်သည်အထိ အဆင့်တိုင်းကို အချိန်နှင့်အတူ စစ်ဆေးနိုင်ပါသည်။</p></div>
         <section class="panel trace-list-panel">
-          <div class="panel-head"><div><span class="eyebrow">RECENT QUESTIONS</span><h2>နောက်ဆုံးမေးခွန်းများ</h2></div><button class="secondary" id="refreshQueries">↻ ပြန်စစ်ရန်</button></div>
+          <div class="panel-head"><div><span class="eyebrow">RECENT QUESTIONS</span><h2>နောက်ဆုံးမေးခွန်း ၃ ခု</h2></div><div class="panel-actions"><button class="secondary" id="viewAllQuestions">မှတ်တမ်းအားလုံးကြည့်ရန်</button><button class="secondary" id="refreshQueries">↻ ပြန်စစ်ရန်</button></div></div>
           <div id="queryRunList" class="query-run-list"><div class="empty">ဒေတာရယူနေသည်…</div></div>
         </section>
         <section class="panel trace-detail-panel">
           <div class="panel-head"><div><span class="eyebrow">ANSWER INSPECTION</span><h2>မေးခွန်းနှင့် ရလဒ်စစ်ဆေးမှု</h2></div></div>
           <div id="queryRunDetail" class="query-run-detail"><div class="empty">ကြည့်လိုသော မေးခွန်းတစ်ခုကို ရွေးပါ။</div></div>
+        </section>
+      </section>
+
+      <section id="historyView" class="view">
+        <div class="page-title"><span class="eyebrow">QUESTION HISTORY</span><h2>မေးခွန်းမှတ်တမ်းများ</h2><p>ယခင်မေးခွန်းများကို ရှာဖွေ၊ စစ်ထုတ်ပြီး လုပ်ဆောင်မှုအဆင့်များကို ပြန်လည်ကြည့်ရှုနိုင်ပါသည်။</p></div>
+        <section class="panel history-panel">
+          <div class="panel-head history-head"><div><span class="eyebrow">ALL QUESTIONS</span><h2>မေးခွန်းအားလုံး</h2></div><button class="secondary" id="refreshHistory">↻ ပြန်စစ်ရန်</button></div>
+          <div class="history-filters">
+            <label class="search history-search"><span>⌕</span><input id="historySearch" type="search" placeholder="မေးခွန်းစာသားဖြင့် ရှာရန်"></label>
+            <select id="historyOutcome"><option value="all">အခြေအနေအားလုံး</option><option value="answered">အဖြေပေးပြီး</option><option value="insufficient">အထောက်အထားမလုံလောက်</option></select>
+            <select id="historyLaw"><option value="all">ဥပဒေအားလုံး</option></select>
+            <select id="historySort"><option value="newest">နောက်ဆုံးမေးခွန်းအရင်</option><option value="oldest">အဟောင်းဆုံးအရင်</option><option value="slowest">ကြာချိန်အများဆုံးအရင်</option><option value="fastest">ကြာချိန်အနည်းဆုံးအရင်</option></select>
+          </div>
+          <div id="historySummary" class="history-summary"></div>
+          <div id="historyList" class="history-list"><div class="empty">ဒေတာရယူနေသည်…</div></div>
+          <div class="history-pagination"><button class="secondary" id="historyPrevious">ယခင်</button><span id="historyPageInfo">—</span><button class="secondary" id="historyNext">နောက်တစ်မျက်နှာ</button></div>
         </section>
       </section>
 
@@ -94,6 +111,6 @@
       </section>
     </main>
   </div>
-  <script src="/admin.js"></script>
+  <script src="/admin.js?v=20260812-question-history-1"></script>
 </body>
 </html>

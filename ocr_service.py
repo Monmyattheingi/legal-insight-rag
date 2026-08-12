@@ -2778,8 +2778,24 @@ def analyze_legal_report():
                     )
                 elif display_analysis:
                     display_analysis["penalty"] = ""
+
+                # A court order, burden-of-proof rule, injunction, or civil remedy
+                # is not automatically a criminal punishment.  Keep the dedicated
+                # punishment field only when the final text contains an explicit
+                # imprisonment/fine formulation.  This also guards against a
+                # composer labelling phrases such as "အမိန့်ချမှတ်နိုင်သည်" alone
+                # as a punishment.
+                if display_analysis and display_analysis.get("penalty"):
+                    penalty_text = str(display_analysis.get("penalty") or "")
+                    if not any(
+                        keyword in penalty_text
+                        for keyword in STRONG_PUNISHMENT_TEXT_KEYWORDS
+                    ):
+                        display_analysis["penalty"] = ""
                 punishment_section = None
                 punishment_excerpt = None
+                punishment_found = False
+                punishment_same_section = False
                 if penalty_match:
                     punishment_sources = penalty_match.get("evidence") or []
                     if punishment_sources:
@@ -2787,20 +2803,60 @@ def analyze_legal_report():
                         punishment_excerpt = _extract_punishment_excerpt(
                             punishment_sources[-1]
                         )
+                        punishment_found = True
+                        punishment_same_section = bool(
+                            selected_section and punishment_section
+                            and str(selected_section) == str(punishment_section)
+                        )
+                elif display_analysis and display_analysis.get("penalty"):
+                    # The final validated analysis is what the user UI renders.
+                    # Use it for every response mode so Admin never disagrees with
+                    # a source-backed punishment that is already visible to users.
+                    punishment_excerpt = display_analysis.get("penalty")
+                    related_sections = display_analysis.get("related_sections") or []
+                    punishment_citation = next(
+                        (
+                            item.get("citation")
+                            for item in related_sections
+                            if item.get("citation")
+                            and (
+                                "ပြစ်ဒဏ်" in str(item.get("role") or "")
+                                or "ပြစ်ဒဏ်" in str(item.get("summary") or "")
+                                or "ထောင်ဒဏ်" in str(item.get("summary") or "")
+                                or "ငွေဒဏ်" in str(item.get("summary") or "")
+                            )
+                        ),
+                        None,
+                    )
+                    primary_citation = next(
+                        (
+                            item.get("citation")
+                            for item in related_sections
+                            if item.get("role") == "အဓိက" and item.get("citation")
+                        ),
+                        None,
+                    )
+                    punishment_section = re.sub(
+                        r"^ပုဒ်မ\s*",
+                        "",
+                        str(punishment_citation or primary_citation or selected_section or ""),
+                    ).strip() or selected_section
+                    punishment_found = True
+                    punishment_same_section = bool(
+                        selected_section and punishment_section
+                        and str(selected_section) == str(punishment_section)
+                    )
                 record_step(
                     "punishment_linked", step_started,
                     {
                         "required": _question_may_need_penalty(matching_question),
-                        "found": bool(penalty_match),
+                        "found": punishment_found,
                         "section": punishment_section,
                         "offense_section": selected_section,
-                        "same_section": bool(
-                            selected_section and punishment_section
-                            and str(selected_section) == str(punishment_section)
-                        ),
+                        "same_section": punishment_same_section,
                         "punishment_excerpt": punishment_excerpt,
                     },
-                    "completed" if penalty_match else "skipped",
+                    "completed" if punishment_found else "skipped",
                 )
 
                 step_started = time.perf_counter()
@@ -2813,7 +2869,7 @@ def analyze_legal_report():
                         "evidence_count": len(evidence),
                         "law_name": selected_law,
                         "section": selected_section,
-                        "punishment_found": bool(penalty_match),
+                        "punishment_found": punishment_found,
                         "source_names": list(dict.fromkeys(
                             source.get("law_name")
                             for source in sources

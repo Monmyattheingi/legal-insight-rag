@@ -1,6 +1,9 @@
 const $ = (id) => document.getElementById(id);
 let documents = [];
-const views = ["dashboard", "upload", "processing", "queries", "review"];
+const views = ["dashboard", "upload", "processing", "queries", "history", "review"];
+let queryRuns = [];
+let historyPage = 1;
+const historyPageSize = 12;
 
 const number = (value) => new Intl.NumberFormat("my-MM").format(Number(value || 0));
 function escapeHtml(value) { const node = document.createElement("div"); node.textContent = value ?? ""; return node.innerHTML; }
@@ -46,6 +49,7 @@ function showView(name) {
   views.forEach((view) => $(`${view}View`).classList.toggle("active", view === resolved));
   if (resolved === "processing") loadProcessing();
   if (resolved === "queries") loadQueryRuns();
+  if (resolved === "history") loadQuestionHistory();
   if (resolved === "review") loadQuality();
 }
 
@@ -151,6 +155,58 @@ function retrievalInterpretation(details, item) {
   return {keywords, understoodCase, legalTopic, section, reason};
 }
 
+function textList(value) {
+  if (!hasValue(value)) return [];
+  if (Array.isArray(value)) return value.map(String).filter(Boolean);
+  return String(value).split(/[,၊·|]/).map((part) => part.trim()).filter(Boolean);
+}
+
+function detectedQuestionTerms(question) {
+  const text = String(question || "").toLowerCase();
+  const vocabulary = [
+    "facebook", "messenger", "account", "password", "post", "comment", "share", "link", "screenshot",
+    "လူမှုကွန်ရက်", "အွန်လိုင်း", "ဂုဏ်သရေ", "အသရေဖျက်", "မမှန်သတင်း", "ခြိမ်းခြောက်",
+    "လိမ်လည်", "ခိုးယူ", "ကျူးကျော်", "အိမ်ကျော်နင်း", "ဖောက်ပြန်", "လင်မယား", "အိမ်ထောင်",
+    "ကလေး", "အလုပ်ကြမ်း", "ကျောင်း", "လိင်ပိုင်းဆိုင်ရာ", "ခေါင်းပုံဖြတ်", "ရောင်းချ",
+    "passport", "နိုင်ငံကူးလက်မှတ်", "အတု", "သစ်", "သစ်တော", "မူးယစ်ဆေး", "သယ်ယူ", "ရောင်းချ"
+  ];
+  return vocabulary.filter((term) => text.includes(term)).slice(0, 10);
+}
+
+function classificationInterpretation(details, item) {
+  const retrieval = retrievalInterpretation(details, item);
+  const question = String(item.question || "");
+  const explicitKeywords = textList(details.matched_terms || details.search_terms || details.keywords);
+  const keywords = [...new Set([...explicitKeywords, ...detectedQuestionTerms(question)])];
+  const actorPatterns = ["မိဘ", "ဖခင်", "မိခင်", "ခင်ပွန်း", "ဇနီး", "အမျိုးသား", "အမျိုးသမီး", "ကလေး", "မသမာသူ", "လူတစ်စု", "လူတစ်ယောက်"];
+  const actors = actorPatterns.filter((term) => question.includes(term));
+  const channels = ["Facebook", "Messenger", "လူမှုကွန်ရက်", "အွန်လိုင်း", "ဖုန်း", "အီးမေးလ်", "အိမ်", "ကျောင်း"]
+    .filter((term) => question.toLowerCase().includes(term.toLowerCase()));
+  const impacts = ["ဂုဏ်သရေထိခိုက်မှု", "ငွေကြေးဆုံးရှုံးမှု", "ကိုယ်ခန္ဓာထိခိုက်မှု", "ကလေးအခွင့်အရေးထိခိုက်မှု", "ကိုယ်ရေးအချက်အလက်ထိခိုက်မှု"]
+    .filter((label) => {
+      if (label.startsWith("ဂုဏ်")) return /ဂုဏ်|အသရေ/.test(question);
+      if (label.startsWith("ငွေ")) return /ငွေ|ပစ္စည်း/.test(question);
+      if (label.startsWith("ကိုယ်ခန္ဓာ")) return /ရိုက်|ထိုး|နာကျင်|ဒဏ်ရာ/.test(question);
+      if (label.startsWith("ကလေး")) return /ကလေး|ကျောင်း|အလုပ်ကြမ်း/.test(question);
+      return /account|password|data|ကိုယ်ရေး/.test(question.toLowerCase());
+    });
+  const classification = details.case_type || details.classification || item.case_type;
+  const confidence = details.confidence ?? details.classification_confidence;
+  return {
+    classification,
+    relatedTypes: details.related_case_types || details.secondary_classifications,
+    keywords,
+    actors,
+    action: details.detected_action || details.action || retrieval.understoodCase,
+    channels,
+    impacts,
+    reason: details.classification_reason || (keywords.length
+      ? `${keywords.join("၊ ")} ဟူသော အချက်များကို တွေ့ရှိသောကြောင့် ${displayValue(classification || retrieval.understoodCase)} အဖြစ် ခွဲခြားခဲ့သည်။`
+      : `${retrieval.understoodCase} ဟူသော ဖြစ်စဉ်အဓိပ္ပာယ်နှင့် ကိုက်ညီသောကြောင့် ခွဲခြားခဲ့သည်။`),
+    confidence: hasValue(confidence) ? confidence : null,
+  };
+}
+
 function describeTraceStep(step, item, longestDuration) {
   const d = step.details || {};
   const duration = Number(step.duration_ms || 0);
@@ -175,10 +231,23 @@ function describeTraceStep(step, item, longestDuration) {
       facts = [fact("အသုံးပြုထားသောမေးခွန်း", d.normalized_question)];
       break;
     case "case_classified":
+      {
+      const interpretation = classificationInterpretation(d, item);
       title = "ဖြစ်စဉ်အမျိုးအစားကို ခွဲခြားသတ်မှတ်ခဲ့သည်";
-      description = `မေးခွန်းတွင် ဖော်ပြထားသော ပါဝင်သူများ၊ လုပ်ရပ်၊ ထိခိုက်မှုနှင့် အဓိကအသုံးအနှုန်းများကို စစ်ဆေးပြီး${hasValue(d.case_type || d.classification) ? ` “${displayValue(d.case_type || d.classification)}” ဖြစ်စဉ်အမျိုးအစားအဖြစ်` : " သက်ဆိုင်ရာဖြစ်စဉ်အမျိုးအစားကို"} သတ်မှတ်ခဲ့သည်။`;
-      facts = [fact("ဖြစ်စဉ်အမျိုးအစား", d.case_type), fact("ခွဲခြားရလဒ်", d.classification)];
+      description = `မေးခွန်းတွင် ဖော်ပြထားသော ပါဝင်သူ၊ လုပ်ရပ်၊ အသုံးပြုသည့်နည်းလမ်း၊ ဖြစ်ပေါ်သောထိခိုက်မှုနှင့် အဓိကစကားလုံးများကို စစ်ဆေးပြီး${hasValue(interpretation.classification) ? ` “${displayValue(interpretation.classification)}” ဖြစ်စဉ်အမျိုးအစားအဖြစ်` : " သက်ဆိုင်ရာဖြစ်စဉ်အမျိုးအစားကို"} သတ်မှတ်ခဲ့သည်။`;
+      facts = [
+        fact("အဓိကဖြစ်စဉ်အမျိုးအစား", interpretation.classification),
+        fact("ဆက်စပ်ဖြစ်စဉ်အမျိုးအစားများ", interpretation.relatedTypes),
+        fact("အဓိကစကားလုံးများ", interpretation.keywords),
+        fact("သက်ဆိုင်သူများ", interpretation.actors),
+        fact("တွေ့ရှိသောလုပ်ရပ်", interpretation.action),
+        fact("အသုံးပြုသည့်နည်းလမ်း", interpretation.channels),
+        fact("ဖြစ်ပေါ်သောထိခိုက်မှု", interpretation.impacts),
+        fact("ခွဲခြားရသည့်အကြောင်းရင်း", interpretation.reason),
+        fact("ယုံကြည်နိုင်မှုအဆင့်", interpretation.confidence),
+      ];
       break;
+      }
     case "embedding_generated":
       title = "မေးခွန်း၏အဓိပ္ပာယ်ကို ရှာဖွေမှုပုံစံသို့ ပြောင်းလဲခဲ့သည်";
       description = `မေးခွန်းထဲရှိ စကားလုံးတစ်လုံးချင်းသာမက ဖြစ်စဉ်တစ်ခုလုံး၏ အဓိပ္ပာယ်ကို ဥပဒေစာတမ်းများနှင့် နှိုင်းယှဉ်ရှာဖွေနိုင်သောပုံစံသို့ ပြောင်းလဲခဲ့သည်။ ဤအဆင့်သည် ${readableSeconds(duration)} ကြာခဲ့သည်${duration === longestDuration && duration > 0 ? "။ ယခု process အတွင်း အချိန်အများဆုံးအသုံးပြုခဲ့သောအဆင့်ဖြစ်သည်။" : "။"}`;
@@ -193,7 +262,20 @@ function describeTraceStep(step, item, longestDuration) {
       const termsText = hasValue(d.matched_terms || d.search_terms) ? ` တကယ်ကိုက်ညီခဲ့သော အဓိကအသုံးအနှုန်းများမှာ “${displayValue(d.matched_terms || d.search_terms)}” ဖြစ်သည်။` : "";
       const lawsText = hasValue(d.candidate_laws) ? ` Candidate ဥပဒေများအဖြစ် ${displayValue(d.candidate_laws)} ကို တွေ့ရှိခဲ့သည်။` : "";
       description = `စကားလုံးတိတိကျကျကိုက်ညီမှုနှင့် ဖြစ်စဉ်တစ်ခုလုံး၏ အဓိပ္ပာယ်တူညီမှုကို ပေါင်းစပ်ပြီး database ရှိ ဥပဒေအပိုင်းများအတွင်း ရှာဖွေခဲ့သည်။${termsText}${lawsText}${countText}${scoreText}${marginText} ရှာဖွေမှုသည် ${readableSeconds(duration)} ကြာခဲ့သည်။`;
-      facts = [fact("အဓိကစကားလုံးများ", interpretation.keywords), fact("နားလည်ထားသောဖြစ်စဉ်", interpretation.understoodCase), fact("ရှာဖွေသည့်ဥပဒေအကြောင်းအရာ", interpretation.legalTopic), fact("ရရှိသောပုဒ်မ", interpretation.section), fact("ရွေးချယ်ရသည့်အကြောင်း", interpretation.reason)];
+      const searchKeywords = [...new Set([...textList(interpretation.keywords), ...detectedQuestionTerms(item.question)])];
+      facts = [
+        fact("အဓိကစကားလုံးများ", searchKeywords),
+        fact("ဆက်စပ်ရှာဖွေစကားလုံးများ", d.related_terms || d.expanded_terms),
+        fact("နားလည်ထားသောဖြစ်စဉ်", interpretation.understoodCase),
+        fact("ရှာဖွေသည့်ဥပဒေအကြောင်းအရာ", interpretation.legalTopic),
+        fact("စစ်ဆေးခဲ့သော Candidate အရေအတွက်", d.candidate_count),
+        fact("Candidate ဥပဒေများ", d.candidate_laws),
+        fact("Candidate ပုဒ်မများ", d.candidate_sections),
+        fact("အမြင့်ဆုံးကိုက်ညီမှု Score", d.top_score),
+        fact("ပထမနှင့်ဒုတိယ Candidate ကွာဟချက်", d.score_margin),
+        fact("ရရှိသောအဓိကပုဒ်မ", interpretation.section),
+        fact("ရွေးချယ်ရသည့်အကြောင်း", interpretation.reason),
+      ];
       break;
     }
     case "candidates_ranked":
@@ -262,13 +344,73 @@ async function loadQueryRuns() {
   $("queryRunList").innerHTML = '<div class="empty">မေးခွန်းမှတ်တမ်း ရယူနေသည်…</div>';
   try {
     const data = await api("/api/admin/query-runs");
-    $("queryRunList").innerHTML = data.items.length
-      ? data.items.map(queryRunCard).join("")
+    queryRuns = data.items || [];
+    const recent = queryRuns.slice(0, 3);
+    $("queryRunList").innerHTML = recent.length
+      ? recent.map(queryRunCard).join("")
       : '<div class="empty">Trace အသစ်မရှိသေးပါ။ User UI မှ မေးခွန်းတစ်ခု စမ်းကြည့်ပါ။</div>';
-    if (data.items.length) loadQueryRunDetail(data.items[0].id);
+    if (recent.length) loadQueryRunDetail(recent[0].id);
   } catch (error) {
     $("queryRunList").innerHTML = `<div class="empty failure">${escapeHtml(error.message)}</div>`;
   }
+}
+
+function historyFilteredItems() {
+  const search = ($("historySearch")?.value || "").trim().toLowerCase();
+  const outcome = $("historyOutcome")?.value || "all";
+  const law = $("historyLaw")?.value || "all";
+  const sort = $("historySort")?.value || "newest";
+  const items = queryRuns.filter((item) => {
+    if (search && !String(item.question || "").toLowerCase().includes(search)) return false;
+    if (outcome === "answered" && !item.answerable) return false;
+    if (outcome === "insufficient" && item.answerable) return false;
+    if (law !== "all" && item.selected_law !== law) return false;
+    return true;
+  });
+  items.sort((a, b) => {
+    if (sort === "oldest") return new Date(a.created_at) - new Date(b.created_at);
+    if (sort === "slowest") return Number(b.total_ms || 0) - Number(a.total_ms || 0);
+    if (sort === "fastest") return Number(a.total_ms || 0) - Number(b.total_ms || 0);
+    return new Date(b.created_at) - new Date(a.created_at);
+  });
+  return items;
+}
+
+function historyCard(item) {
+  const when = new Date(item.created_at).toLocaleString("my-MM");
+  return `<button class="history-card" data-history-run-id="${item.id}"><div><h3>${escapeHtml(item.question)}</h3><p><span>${escapeHtml(item.selected_law || "ဥပဒေမရွေးချယ်ရသေး")}</span>${item.selected_section ? `<span>ပုဒ်မ ${escapeHtml(item.selected_section)}</span>` : ""}</p></div><div class="history-card-meta"><small>${escapeHtml(when)}</small><small>${number(item.total_ms)} ms</small><span class="badge ${item.answerable ? "" : "warn"}">${item.answerable ? "အဖြေပေးပြီး" : "အထောက်အထားမလုံလောက်"}</span></div></button>`;
+}
+
+function renderQuestionHistory() {
+  const items = historyFilteredItems();
+  const totalPages = Math.max(1, Math.ceil(items.length / historyPageSize));
+  historyPage = Math.min(historyPage, totalPages);
+  const start = (historyPage - 1) * historyPageSize;
+  const pageItems = items.slice(start, start + historyPageSize);
+  $("historySummary").textContent = `တွေ့ရှိသောမေးခွန်း ${number(items.length)} ခု`;
+  $("historyList").innerHTML = pageItems.length ? pageItems.map(historyCard).join("") : '<div class="empty">ရွေးချယ်ထားသောစစ်ထုတ်မှုနှင့် ကိုက်ညီသည့် မေးခွန်းမရှိပါ။</div>';
+  $("historyPageInfo").textContent = `စာမျက်နှာ ${number(historyPage)} / ${number(totalPages)}`;
+  $("historyPrevious").disabled = historyPage <= 1;
+  $("historyNext").disabled = historyPage >= totalPages;
+}
+
+async function loadQuestionHistory(force = false) {
+  if (!queryRuns.length || force) {
+    $("historyList").innerHTML = '<div class="empty">မေးခွန်းမှတ်တမ်း ရယူနေသည်…</div>';
+    try { const data = await api("/api/admin/query-runs"); queryRuns = data.items || []; }
+    catch (error) { $("historyList").innerHTML = `<div class="empty failure">${escapeHtml(error.message)}</div>`; return; }
+  }
+  const selected = $("historyLaw").value;
+  const laws = [...new Set(queryRuns.map((item) => item.selected_law).filter(Boolean))].sort();
+  $("historyLaw").innerHTML = '<option value="all">ဥပဒေအားလုံး</option>' + laws.map((law) => `<option value="${escapeHtml(law)}">${escapeHtml(law)}</option>`).join("");
+  if (laws.includes(selected)) $("historyLaw").value = selected;
+  renderQuestionHistory();
+}
+
+function openHistoryRun(runId) {
+  document.querySelector('[data-view="queries"]').click();
+  loadQueryRunDetail(runId);
+  setTimeout(() => $("queryRunDetail")?.scrollIntoView({behavior: "smooth", block: "start"}), 80);
 }
 
 async function loadQueryRunDetail(runId) {
@@ -326,9 +468,27 @@ async function loadQuality() {
     $("qualityIssues").textContent = number(data.summary.issues);
     $("qualityList").innerHTML = data.documents.map((item) => {
       const issues = item.issues || [];
-      return `<article class="quality-item"><div><h3>${escapeHtml(item.law_name)}</h3><div class="issue-tags">${issues.length ? issues.map((issue) => `<span class="issue-tag">${escapeHtml(issue)}</span>`).join("") : '<span class="issue-tag good">ပြဿနာမတွေ့ပါ</span>'}</div></div><span class="quality-score ${issues.length ? "failure" : "success"}">${issues.length ? "စစ်ဆေးရန်" : "ကောင်းမွန်"}</span></article>`;
+      const action = issues.length ? `<button class="quality-review-button" data-quality-id="${escapeHtml(item.id)}">စစ်ဆေးရန်</button>` : '<span class="quality-score success">ကောင်းမွန်</span>';
+      return `<article class="quality-item"><div><h3>${escapeHtml(item.law_name)}</h3><div class="issue-tags">${issues.length ? issues.map((issue) => `<span class="issue-tag">${escapeHtml(issue)}</span>`).join("") : '<span class="issue-tag good">ပြဿနာမတွေ့ပါ</span>'}</div></div>${action}<div class="quality-chunks" id="quality-${escapeHtml(item.id)}"></div></article>`;
     }).join("");
   } catch (error) { $("qualityList").innerHTML = `<div class="empty failure">${escapeHtml(error.message)}</div>`; }
+}
+
+function qualityChunkCard(item) {
+  const reasons = (item.reasons || []).map((reason) => `<span>${escapeHtml(reason)}</span>`).join("");
+  return `<article class="quality-chunk-card"><div class="quality-chunk-head"><strong>Chunk ${number(item.chunk_index)}</strong><div>${reasons}</div></div><dl><div><dt>Chapter</dt><dd>${escapeHtml(item.chapter || "—")}</dd></div><div><dt>Section</dt><dd>${escapeHtml(item.section || "—")}</dd></div><div><dt>Subsection</dt><dd>${escapeHtml(item.subsection || "—")}</dd></div><div><dt>Embedding</dt><dd class="${item.has_embedding ? "success" : "failure"}">${item.has_embedding ? "ရှိသည်" : "မရှိပါ"}</dd></div></dl><div class="quality-chunk-content">${escapeHtml(item.content || "စာသားမရှိပါ")}</div></article>`;
+}
+
+async function toggleQualityChunks(button) {
+  const id = button.dataset.qualityId; const target = $(`quality-${id}`);
+  if (target.classList.contains("open")) { target.classList.remove("open"); target.innerHTML = ""; button.textContent = "စစ်ဆေးရန်"; return; }
+  target.classList.add("open"); target.innerHTML = '<div class="empty">Chunk များရယူနေသည်…</div>'; button.disabled = true;
+  try {
+    const data = await api(`/api/admin/quality/${encodeURIComponent(id)}/chunks`); const shown = (data.items || []).length;
+    target.innerHTML = `<div class="quality-chunk-summary"><b>စစ်ဆေးရန်လိုသော chunk ${number(data.total)} ခု</b><span>${data.total > shown ? `ပထမ ${number(shown)} ခုကို ပြထားသည်` : "အားလုံးကို ပြထားသည်"}</span></div>${shown ? data.items.map(qualityChunkCard).join("") : '<div class="empty">စစ်ဆေးရန်လိုသော chunk မတွေ့ပါ။</div>'}`;
+    button.textContent = "ပိတ်ရန်";
+  } catch (error) { target.innerHTML = `<div class="empty failure">${escapeHtml(error.message)}</div>`; }
+  finally { button.disabled = false; }
 }
 
 document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => {
@@ -339,7 +499,14 @@ document.querySelectorAll("[data-view]").forEach((button) => button.addEventList
 $("lawSearch").addEventListener("input", (event) => renderDocuments(event.target.value));
 $("refreshProcessing").addEventListener("click", loadProcessing);
 $("refreshQueries").addEventListener("click", loadQueryRuns);
+$("viewAllQuestions").addEventListener("click", () => document.querySelector('[data-view="history"]').click());
+$("refreshHistory").addEventListener("click", () => loadQuestionHistory(true));
+["historySearch", "historyOutcome", "historyLaw", "historySort"].forEach((id) => $(id).addEventListener(id === "historySearch" ? "input" : "change", () => { historyPage = 1; renderQuestionHistory(); }));
+$("historyPrevious").addEventListener("click", () => { if (historyPage > 1) { historyPage -= 1; renderQuestionHistory(); } });
+$("historyNext").addEventListener("click", () => { historyPage += 1; renderQuestionHistory(); });
+$("historyList").addEventListener("click", (event) => { const card = event.target.closest("[data-history-run-id]"); if (card) openHistoryRun(card.dataset.historyRunId); });
 $("refreshQuality").addEventListener("click", loadQuality);
+$("qualityList").addEventListener("click", (event) => { const button = event.target.closest("[data-quality-id]"); if (button) toggleQualityChunks(button); });
 $("queryRunList").addEventListener("click", (event) => {
   const card = event.target.closest("[data-run-id]");
   if (card) loadQueryRunDetail(card.dataset.runId);
