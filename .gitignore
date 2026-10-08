@@ -12,38 +12,28 @@ __pycache__/
 .venv/
 venv/
 
-# Node / frontend build output
+# Node and build output
 node_modules/
 .next/
 dist/
 build/
 
-# Runtime and temporary files
+# Runtime data
 *.log
 *.tmp
 *.temp
-frontend/admin/uploads/
-
-# Local databases and database dumps
-*.sql.gz
-*.dump
-*.backup
+uploads/
 backups/
+output/
 
-# Large generated embedding exports
+# Generated datasets and model artifacts
 *_embedded.csv
 *embedded*.csv
-
-# Generated chunk exports (source workflows and code remain tracked)
-workflows/legal_chunks*.json
-workflows/legal_chnks*.json
-workflows/legal-rag-execution-*.csv
-
-# Local AI models
+legal_chunks*.json
 *.gguf
 models/
 
-# IDE / OS
+# IDE and operating system
 .vscode/
 .idea/
 .DS_Store
